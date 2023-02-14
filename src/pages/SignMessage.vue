@@ -1,39 +1,39 @@
 <template>
-  <q-page class="row items-center justify-evenly">
-    <div v-if="account">
-      <div class="column justify-around">
-        <div class="q-pa-sm" style="width: 500px">
-          <q-input v-model="message" type="textarea" filled label="Message:" />
+  <q-page class='row items-center justify-evenly'>
+    <div v-if='account'>
+      <div class='column justify-around'>
+        <div class='q-pa-sm' style='width: 500px'>
+          <q-input v-model='message' type='textarea' filled label='Message:' />
         </div>
 
-        <div class="row justify-between q-pa-md">
+        <div class='row justify-between q-pa-md'>
           <q-input
-            type="text"
-            style="width: 500px"
-            v-model="address"
-            label="address:"
+            type='text'
+            style='width: 500px'
+            v-model='address'
+            label='address:'
           ></q-input>
         </div>
-        <q-btn @click="send" label="Send" size="md" class="q-ma-lg"></q-btn>
+        <q-btn @click='send' label='Send' size='md' class='q-ma-lg'></q-btn>
       </div>
 
-      <div class="column">
-        <div class="q-pa-sm" style="width: 500px">
-          <q-input v-model="sig" type="textarea" filled label="Signature:" />
+      <div class='column'>
+        <div class='q-pa-sm' style='width: 500px'>
+          <q-input v-model='sig' type='textarea' filled label='Signature:' />
         </div>
-        <q-btn @click="verify" label="Verify" class="q-ma-lg"></q-btn>
+        <q-btn @click='verify' label='Verify' class='q-ma-lg'></q-btn>
       </div>
     </div>
 
     <div v-else>
       Welcome using Wallet Connect v2 for BSV Wallet. <br />
-      <a href="http://chainbow.io">http://chainbow.io</a>
-      <q-btn @click="connect(DAPP)">Connect Wallet</q-btn>
+      <a href='http://chainbow.io'>http://chainbow.io</a>
+      <q-btn @click='connect(DAPP)'>Connect Wallet</q-btn>
     </div>
   </q-page>
 </template>
 
-<script lang="ts">
+<script lang='ts'>
 import { Dialog, Notify } from 'quasar';
 import { defineComponent, reactive, toRefs, watch, onMounted } from 'vue';
 import useWallet from '../hooks/useWallet';
@@ -49,7 +49,7 @@ export default defineComponent({
     const data = reactive({
       address: '',
       message: 'Hello World',
-      sig: '',
+      sig: ''
     });
 
     watch(
@@ -67,7 +67,7 @@ export default defineComponent({
         await wc
           .signMessage({
             address: data.address,
-            message: data.message,
+            message: data.message
           })
           .then((result: IMessageResult | undefined) => {
             if (result && result.error) {
@@ -82,13 +82,13 @@ export default defineComponent({
               Notify.create({
                 color: 'negative',
                 message: 'Please Open Wallet',
-                position: 'top',
+                position: 'top'
               });
             } else {
               Notify.create({
                 color: 'negative',
                 message: error.message,
-                position: 'top',
+                position: 'top'
               });
             }
           });
@@ -100,11 +100,11 @@ export default defineComponent({
         const result = Message.verify(data.message, data.address, data.sig);
         console.log('verify result', result);
         Dialog.create({
-          message: result ? 'Success' : 'Fail',
+          message: result ? 'Success' : 'Fail'
         });
       } catch (e: any) {
         Dialog.create({
-          message: e.message,
+          message: e.message
         });
       }
     };
@@ -120,8 +120,8 @@ export default defineComponent({
       ...toRefs(data),
       DAPP,
       send,
-      verify,
+      verify
     };
-  },
+  }
 });
 </script>

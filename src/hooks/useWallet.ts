@@ -9,77 +9,63 @@
 global.Buffer = global.Buffer || require('buffer').Buffer;
 global.process = global.process || require('process');
 
-import { openURL } from 'quasar';
-import WalletConnectClient, { CLIENT_EVENTS } from '@walletconnect/client';
-import {
-  PairingTypes,
-  SessionTypes,
-  AppMetadata,
-  ClientOptions,
-} from '@walletconnect/types';
+import SignClient from '@walletconnect/sign-client';
+import { Web3Modal } from '@web3modal/standalone';
+import WalletConnectClient from '@walletconnect/client';
+import { AppMetadata, ClientOptions, SessionTypes } from '@walletconnect/types';
 import { ERROR } from '@walletconnect/utils';
-import { reactive, readonly, toRefs } from 'vue';
-import QRCodeModal from '@walletconnect/qrcode-modal';
+import { reactive, toRefs } from 'vue';
+import { CHAIN_ID, DEFAULT_RELAY_PROVIDER, IAccount, IAccountBalances, IAssetData, IMessageParameters, IMessageResult, ISignTransaction, ISignTransactionResult, ITransaction } from './useWalletTypes';
+
 const Message = require('bsv/message');
 const TIMEOUT = 300000;
-
-import {
-  APPROVAL_METHODS,
-  NON_APPROVAL_METHODS,
-  CHAIN_ID,
-  DEFAULT_RELAY_PROVIDER,
-  IAccount,
-  IAccountBalances,
-  IMessageParameters,
-  IMessageResult,
-  ISignTransaction,
-  IAssetData,
-  ITransaction,
-} from './useWalletTypes';
-import SessionStorageWC from 'src/utils/SessionStorageWC';
-import { Notify } from 'quasar';
-import { useRoute } from 'vue-router';
 
 interface IAppState {
   initialized: boolean;
   wallet: string | undefined;
-  client?: WalletConnectClient;
-  session?: SessionTypes.Created;
+  client?: SignClient;
+  session?: any;
   account?: IAccount;
+  currentChainId: string;
+
 }
 
 const INITIAL_STATE: IAppState = {
   initialized: false,
+  currentChainId: CHAIN_ID,
   wallet: undefined,
   client: undefined,
   session: undefined,
-  account: undefined,
+  account: undefined
 };
 
 const dataWC = reactive<IAppState>(INITIAL_STATE);
 
-export default function useWallet(
-  appSchema = 'chainbow',
-  opts?: ClientOptions
-) {
+
+interface Request {
+  chainId: string,
+  body: RequestBody
+}
+
+interface RequestBody {
+  method: string;
+  params?: { [key: string]: any };
+}
+
+export interface Response {
+  error?: string;
+  data?: any;
+}
+
+
+export default function useWallet(appSchema = 'chainbow', opts?: ClientOptions) {
+
   const disconnect = async () => {
-    try {
-      if (
-        dataWC.client &&
-        dataWC.client.session &&
-        dataWC.client.session.topics
-      ) {
-        for (const topic of dataWC.client.session.topics) {
-          await dataWC.client.disconnect({
-            topic: topic,
-            reason: ERROR.USER_DISCONNECTED.format(),
-          });
-        }
-      }
-    } catch (error) {
-      // disconnect from wallet no need to handle
-      console.log(error);
-    }
+    if (!dataWC.client) return false;
+    const topic = dataWC.session.topic;
+    console.info('[开始执行获取余额]', topic);
+
+    await dataWC.client.disconnect({ topic, reason: ERROR.USER_DISCONNECTED.format() });
     dataWC.session = undefined;
     dataWC.account = undefined;
     return true;
@@ -91,20 +77,14 @@ export default function useWallet(
     const account = session.state.accounts[0];
     const [namespace, network, data] = account.split(':');
     const [alias, domain, address, signedMessage] = data.split('|');
-    const username = domain ? `${alias}@${domain}` : address;
+    const username = domain ? `${ alias }@${ domain }` : address;
     const message = session.self.publicKey;
     const result = Message.verify(message, address, signedMessage);
     if (!result) {
       await disconnect();
       throw new Error('InvalidAccount');
     }
-
-    dataWC.account = {
-      username,
-      alias,
-      domain,
-      address,
-    };
+    dataWC.account = { username, alias, domain, address };
     console.log(dataWC.account);
 
     const balances = await getAccountBalance(session, username);
@@ -120,93 +100,33 @@ export default function useWallet(
     return balances;
   };
 
-  const getAccountBalance = async (
-    session: SessionTypes.Settled,
-    username: string
-  ) => {
-    if (!dataWC.client) {
-      throw new Error('NoConnection');
-    }
-    if (session.topic) {
-      const params: SessionTypes.RequestParams = {
-        timeout: TIMEOUT,
-        topic: session.topic,
-        chainId: CHAIN_ID,
-        request: {
-          method: NON_APPROVAL_METHODS.getBalance,
-          params: username,
-        },
-      };
-      const assets: IAssetData[] = await dataWC.client.request(params);
-      console.log('getAccountBalances', assets);
-      return assets2Balance(assets);
-    }
+  const getAccountBalance = async (session?: SessionTypes.Settled | undefined, username?: string) => {
+    const request: Request = { chainId: CHAIN_ID, body: { method: 'getBalance', params: { username } } };
+    const response = await sendBaseRequest(request);
+    return assets2Balance(response.data);
   };
 
-  const signMessage = async (
-    message: IMessageParameters
-  ): Promise<IMessageResult | undefined> => {
-    const params: SessionTypes.RequestParams = {
-      timeout: TIMEOUT,
-      topic: dataWC.session?.topic ?? '',
-      chainId: CHAIN_ID,
-      request: {
-        method: APPROVAL_METHODS.signMessage,
-        params: message,
-      },
-    };
-    const res = await dataWC.client?.request(params);
-    console.log(res);
-    return res;
+  const signMessage = async (message: IMessageParameters): Promise<IMessageResult | undefined> => {
+    const request: Request = { chainId: CHAIN_ID, body: { method: 'signMessage', params: message } };
+    const response = await sendBaseRequest(request);
+    return response.data;
   };
 
   const sendTransaction = async (paymentParameters: ITransaction) => {
-    if (!dataWC.client || !dataWC.session) {
-      throw new Error('NoConnection');
-    }
-
-    const res = await dataWC.client.request({
-      timeout: TIMEOUT,
-      topic: dataWC.session.topic,
-      chainId: CHAIN_ID,
-      request: {
-        method: APPROVAL_METHODS.sendTransaction,
-        params: paymentParameters,
-      },
-    });
-    return res;
+    const request: Request = { chainId: CHAIN_ID, body: { method: 'sendTransaction', params: paymentParameters } };
+    const response = await sendBaseRequest(request);
+    return response.data;
   };
 
-  const signTransaction = async (transactionParameters: ISignTransaction) => {
-    if (!dataWC.client || !dataWC.session) {
-      throw new Error('NoConnection');
-    }
-    const res = await dataWC.client.request({
-      timeout: TIMEOUT,
-      topic: dataWC.session.topic,
-      chainId: CHAIN_ID,
-      request: {
-        method: APPROVAL_METHODS.signTransaction,
-        params: transactionParameters,
-      },
-    });
-    return res;
+  const signTransaction = async (transactionParameters: ISignTransaction): Promise<ISignTransactionResult> => {
+    const request: Request = { chainId: CHAIN_ID, body: { method: 'signTransaction', params: transactionParameters } };
+    const response = await sendBaseRequest(request);
+    return response.data;
   };
 
   const sendRawTransaction = async (txHexArray: string[]) => {
-    if (!dataWC.client || !dataWC.session) {
-      throw new Error('NoConnection');
-    }
-    const res = await dataWC.client.request({
-      timeout: TIMEOUT,
-      topic: dataWC.session.topic,
-      chainId: CHAIN_ID,
-      request: {
-        method: APPROVAL_METHODS.sendRawTransaction,
-        params: txHexArray,
-      },
-    });
-    return res;
+    const request: Request = { chainId: CHAIN_ID, body: { method: 'sendRawTransaction', params: txHexArray } };
+    return await sendBaseRequest(request);
   };
 
   const getBalance = () => {
@@ -216,114 +136,36 @@ export default function useWallet(
     }
   };
 
-  const getNewAddress = async () => {
-    if (!dataWC.client || !dataWC.session) {
-      throw new Error('NoConnection');
-    }
-    const res = await dataWC.client.request({
-      timeout: TIMEOUT,
-      topic: dataWC.session.topic,
-      chainId: CHAIN_ID,
-      request: {
-        method: NON_APPROVAL_METHODS.getNewAddress,
-      },
-    });
-    return res;
+  const getNewAddress = async (): Promise<string> => {
+    const request: Request = { chainId: CHAIN_ID, body: { method: 'getNewAddress' } };
+    const response = await sendBaseRequest(request);
+    return response.data;
   };
 
   const verifyAddress = async (address: string) => {
-    if (!dataWC.client || !dataWC.session) {
-      throw new Error('NoConnection');
-    }
-    const res = await dataWC.client.request({
-      timeout: TIMEOUT,
-      topic: dataWC.session.topic,
-      chainId: CHAIN_ID,
-      request: {
-        method: NON_APPROVAL_METHODS.verifyAddress,
-        params: address,
-      },
-    });
-    return res;
+    const request: Request = { chainId: CHAIN_ID, body: { method: 'verifyAddress', params: { address } } };
+    const response = await sendBaseRequest(request);
+    return JSON.parse(response.data);
   };
 
-  const connect = async (metadata: AppMetadata) => {
-    try {
-      const methods = Object.values({
-        ...APPROVAL_METHODS,
-        ...NON_APPROVAL_METHODS,
-      });
-      const session = await dataWC.client?.connect({
-        metadata: metadata,
-        pairing: undefined,
-        permissions: {
-          blockchain: {
-            chains: [CHAIN_ID],
-          },
-          jsonrpc: {
-            methods,
-          },
-        },
-      });
-      console.info('connectWc instance session', session);
-      if (
-        session &&
-        session.state.accounts &&
-        session.state.accounts.length > 0
-      ) {
-        await onConnected(session);
-      }
-    } catch (e) {
-      // ignore rejection
+  const finishConnectInitAccountInfo = async (account: any, message: string) => {
+    const [namespace, network, data] = account.split(':');
+    const [alias, domain, address, signedMessage] = data.split('|');
+    const username = domain ? `${ alias }@${ domain }` : address;
+    const result = Message.verify(message, address, signedMessage);
+    if (!result) {
+      await disconnect();
+      throw new Error('InvalidAccount');
     }
-
-    // close modal in case it was open
-    QRCodeModal.close();
+    dataWC.account = { username, alias, domain, address };
+    console.log(dataWC.account);
+    const balances = await getAccountBalance(undefined, username);
+    dataWC.account.balances = balances;
   };
+
 
   const subscribeToEvents = (client: WalletConnectClient) => {
-    client.on(
-      CLIENT_EVENTS.pairing.proposal,
-      (proposal: PairingTypes.Proposal) => {
-        const { uri } = proposal.signal.params;
-        console.log('EVENT', 'QR Code Modal open');
-        if (dataWC.wallet) {
-          openURL(`${dataWC.wallet}://wc?uri=${uri}`);
-        } else {
-          QRCodeModal.open(
-            uri,
-            () => {
-              console.log('EVENT', 'QR Code Modal closed');
-            },
-            {
-              mobileLinks: [appSchema],
-            }
-          );
-        }
-      }
-    );
 
-    client.on(
-      CLIENT_EVENTS.session.deleted,
-      async (session: SessionTypes.Settled) => {
-        if (session.topic !== dataWC.session?.topic) return;
-        console.log('EVENT', 'session_deleted');
-        await disconnect();
-      }
-    );
-
-    client.on(
-      CLIENT_EVENTS.session.notification,
-      (session: SessionTypes.Settled) => {
-        // @ts-ignore
-        if (session.notification && session.notification.type === 'balance') {
-          // @ts-ignore
-          if (dataWC.account)
-            // @ts-ignore
-            dataWC.account.balances = assets2Balance(session.notification.data);
-        }
-      }
-    );
   };
 
   const checkPersistedState = async (client: WalletConnectClient) => {
@@ -334,32 +176,109 @@ export default function useWallet(
     }
   };
 
-  const init = async (opts?: ClientOptions) => {
-    console.log(dataWC);
-    if (!dataWC.initialized) {
-      const route = useRoute();
-      const location = new URL(window.location.href);
-      const wallet =
-        location.searchParams.get('wallet') || route.query['wallet'];
-      dataWC.wallet = wallet ? wallet.toString() : undefined;
+  const sendBaseRequest = async (request: { chainId: string, body: RequestBody }): Promise<Response> => {
+    if (!dataWC.session || !dataWC.client) return { error: 'init error' };
+    const { method, params } = request.body;
+    const topic = dataWC.session.topic;
+    console.info('rpc 参数', method, params, topic);
+    const response = await dataWC.client.request({ topic, chainId: dataWC.currentChainId, request: { method, params } });
+    console.info(`${ method } 发送请求，返回值为`, response);
+    return { data: response };
+  };
 
-      dataWC.initialized = true;
-      dataWC.client = await WalletConnectClient.init(
-        Object.assign(
-          {
-            relayUrl: DEFAULT_RELAY_PROVIDER,
-            storage: SessionStorageWC,
-          } as ClientOptions,
-          opts ?? {}
-        )
+
+  const connect = async (metadata: AppMetadata) => {
+    if (!dataWC.client) return false;
+    try {
+      const web3Modal = new Web3Modal({
+        walletConnectVersion: 2, projectId: '1adba0cb85fb70e09109ade51290d777'
+      });
+      const { uri, approval } = await dataWC.client.connect({});
+      await web3Modal.openModal({ uri, standaloneChains: ['bsv'], route: 'Account' });
+      dataWC.session = await approval();
+      console.info('[session]', dataWC.session);
+      const unsubscribe = web3Modal.subscribeModal((newState) =>
+        console.info('[subscribeModal]', dataWC.session)
       );
-      if (dataWC.client) {
-        //@ts-ignore
-        subscribeToEvents(dataWC.client);
-        //@ts-ignore
-        await checkPersistedState(dataWC.client);
-      }
+      unsubscribe();
+      web3Modal.closeModal();
+      await finishConnectInitAccountInfo(dataWC.session.namespaces.bsv.accounts[0], dataWC.session.self.publicKey);
+
+      return true;
+    } catch (error: any) {
+      return false;
     }
+
+  };
+
+  const init = async (opts?: ClientOptions) => {
+    if (dataWC.client) return { error: 'has been init' };
+    const signClient = await SignClient.init({
+      projectId: '1adba0cb85fb70e09109ade51290d777',
+      metadata: {
+        name: 'Example Dapp',
+        description: 'Example Dapp',
+        url: '#',
+        icons: ['https://walletconnect.com/walletconnect-logo.png']
+      }
+    });
+    dataWC.client = signClient;
+
+    signClient.core.pairing.events.on('pairing_delete', ({ id, topic }) => {
+      console.info('[pairing.events]', id, topic);
+
+    });
+
+    signClient.core.pairing.events.on('pairing_proposal', ({ id, topic }) => {
+      console.info('[proposal]', id, topic);
+
+    });
+
+
+    signClient.on('session_delete', ({ id, topic }) => {
+      console.info('[proposal]', id, topic);
+
+    });
+
+    signClient.on('session_event', (event) => {
+      // Handle session events, such as "chainChanged", "accountsChanged", etc.
+      console.info('[session_event]', event);
+
+    });
+
+    signClient.on('session_update', ({ topic, params }) => {
+      console.info('[session_update]', topic, params);
+
+      // const { namespaces } = params;
+      // const _session = signClient.session.get(topic);
+      // // Overwrite the `namespaces` of the existing session with the incoming one.
+      // const updatedSession = { ..._session, namespaces };
+      // // Integrate the updated session state into your dapp state.
+      // onSessionUpdate(updatedSession);
+    });
+
+    signClient.on('session_delete', (event) => {
+      console.info('[session_delete]', event);
+
+      // Session was deleted -> reset the dapp state, clean up from user session, etc.
+    });
+
+    // if (!dataWC.initialized) {
+    //   const route = useRoute();
+    //   const location = new URL(window.location.href);
+    //   const wallet =
+    //     location.searchParams.get('wallet') || route.query['wallet'];
+    //   dataWC.wallet = wallet ? wallet.toString() : undefined;
+    //
+    //   dataWC.initialized = true;
+    //
+    //   if (dataWC.client) {
+    //     //@ts-ignore
+    //     subscribeToEvents(dataWC.client);
+    //     //@ts-ignore
+    //     await checkPersistedState(dataWC.client);
+    //   }
+    // }
   };
 
   void init(opts);
@@ -374,6 +293,7 @@ export default function useWallet(
     signTransaction,
     sendRawTransaction,
     getNewAddress,
-    verifyAddress
+    verifyAddress,
+    getAccountBalance
   };
 }

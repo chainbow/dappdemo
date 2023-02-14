@@ -1,4 +1,3 @@
-import { AppMetadata } from '@walletconnect/types';
 
 export const checkAddressFormat = (val: string) => {
   const bitcoin = /^[1mn][a-km-zA-HJ-NP-Z1-9]{25,34}$/;
@@ -7,7 +6,7 @@ export const checkAddressFormat = (val: string) => {
   return bitcoin.test(val) || email.test(val);
 };
 
-export const DAPP: AppMetadata = {
+export const DAPP: any = {
   name: 'Example Dapp',
   description: 'Example Dapp',
   url: 'https://testwc.mydapp.io',
