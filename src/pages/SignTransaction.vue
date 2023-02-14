@@ -1,107 +1,107 @@
 <template>
-  <q-page class="row items-center justify-evenly">
-    <div v-if="account">
-      <div class="column justify-around">
-        <div class="row justify-between q-pa-md">
+  <q-page class='row items-center justify-evenly'>
+    <div v-if='account'>
+      <div class='column justify-around'>
+        <div class='row justify-between q-pa-md'>
           <q-input
-            type="text"
-            style="width: 500px"
-            v-model="prevTxId"
-            label="prevTxId:"
+            type='text'
+            style='width: 500px'
+            v-model='prevTxId'
+            label='prevTxId:'
           ></q-input>
         </div>
-        <div class="row justify-between q-pa-md">
+        <div class='row justify-between q-pa-md'>
           <q-input
-            type="text"
-            style="width: 500px"
-            v-model="outputIndex"
-            label="outputIndex:"
+            type='text'
+            style='width: 500px'
+            v-model='outputIndex'
+            label='outputIndex:'
           ></q-input>
         </div>
         <q-btn
-          @click="fetchTx"
-          label="Fetch Utxo"
-          size="md"
-          class="q-ma-lg"
+          @click='fetchTx'
+          label='Fetch Utxo'
+          size='md'
+          class='q-ma-lg'
         ></q-btn>
-        <div class="q-pa-sm" style="width: 500px">
+        <div class='q-pa-sm' style='width: 500px'>
           <q-input
-            v-model="lockingScriptHex"
-            type="textarea"
+            v-model='lockingScriptHex'
+            type='textarea'
             filled
-            label="Locking Script Hex:"
+            label='Locking Script Hex:'
           />
         </div>
-        <div class="row justify-between q-pa-md">
+        <div class='row justify-between q-pa-md'>
           <q-input
-            type="text"
-            style="width: 500px"
-            v-model="address"
-            label="address:"
+            type='text'
+            style='width: 500px'
+            v-model='address'
+            label='address:'
           ></q-input>
         </div>
 
-        <div class="row justify-between q-pa-md">
+        <div class='row justify-between q-pa-md'>
           <q-input
-            type="text"
-            v-model="toAddress"
-            style="width: 500px"
-            label="To Address:"
+            type='text'
+            v-model='toAddress'
+            style='width: 500px'
+            label='To Address:'
           ></q-input>
         </div>
-        <div class="row justify-between q-pa-md">
+        <div class='row justify-between q-pa-md'>
           <q-input
-            type="number"
-            v-model="outputSatoshis"
-            style="width: 500px"
-            label="Amount:"
+            type='number'
+            v-model='outputSatoshis'
+            style='width: 500px'
+            label='Amount:'
           ></q-input>
         </div>
         <q-btn
-          @click="signTransaction"
-          label="Sign"
-          size="md"
-          class="q-ma-lg"
+          @click='signTransaction'
+          label='Sign'
+          size='md'
+          class='q-ma-lg'
         ></q-btn>
       </div>
 
-      <div class="column">
-        <div class="q-pa-sm" style="width: 500px">
-          <pre v-html="JSON.stringify(transaction, null, 2)"></pre>
+      <div class='column'>
+        <div class='q-pa-sm' style='width: 500px'>
+          <pre v-html='JSON.stringify(transaction, null, 2)'></pre>
         </div>
         <q-btn
-          @click="sendTransaction"
-          label="Charge and Send"
-          class="q-ma-lg"
+          @click='sendTransaction'
+          label='Charge and Send'
+          class='q-ma-lg'
         ></q-btn>
       </div>
 
-      <div class="column">
-        <div class="q-pa-sm" style="width: 500px">
+      <div class='column'>
+        <div class='q-pa-sm' style='width: 500px'>
           <q-input
-            v-model="rawTx"
-            type="textarea"
+            v-model='rawTx'
+            type='textarea'
             filled
-            label="Raw Transaction:"
+            label='Raw Transaction:'
           />
         </div>
         <q-btn
-          @click="sendRawTransaction"
-          label="Send Raw Transaction"
-          class="q-ma-lg"
+          @click='sendRawTransaction'
+          label='Send Raw Transaction'
+          class='q-ma-lg'
         ></q-btn>
       </div>
     </div>
 
     <div v-else>
       Welcome using Wallet Connect v2 for BSV Wallet. <br />
-      <a href="http://chainbow.io">http://chainbow.io</a>
-      <q-btn @click="connect(DAPP)">Connect Wallet</q-btn>
+      <a href='http://chainbow.io'>http://chainbow.io</a>
+      <q-btn @click='connect(DAPP)'>Connect Wallet</q-btn>
     </div>
   </q-page>
 </template>
 
-<script lang="ts">
+<script lang='ts'>
 import { Notify } from 'quasar';
 
 import { defineComponent, reactive, toRefs, watch, onMounted } from 'vue';
@@ -110,7 +110,7 @@ import { DAPP } from '../hooks/utils';
 import {
   ISignTransaction,
   ITransaction,
-  ISignTransactionResult,
+  ISignTransactionResult
 } from 'src/hooks/useWalletTypes';
 import { api } from 'src/boot/axios';
 import bsv from 'bsv';
@@ -129,7 +129,7 @@ export default defineComponent({
       toAddress: '',
       outputSatoshis: 0,
       error: '',
-      transaction: {},
+      transaction: {}
     });
 
     watch(
@@ -144,7 +144,7 @@ export default defineComponent({
     const fetchTx = async () => {
       await api
         .get(
-          `https://api.whatsonchain.com/v1/bsv/main/tx/hash/${data.prevTxId}`
+          `https://api.whatsonchain.com/v1/bsv/main/tx/hash/${ data.prevTxId }`
         )
         .then((res: any) => {
           console.log(res.data);
@@ -163,16 +163,16 @@ export default defineComponent({
             prevTxId: data.prevTxId,
             outputIndex: data.outputIndex,
             satoshis: data.satoshis,
-            lockingScript: data.lockingScriptHex,
-          },
+            lockingScript: data.lockingScriptHex
+          }
         ],
         outputs: [
           {
             to: script.toHex(),
             format: 'script',
-            amount: String(data.outputSatoshis),
-          },
-        ],
+            amount: String(data.outputSatoshis)
+          }
+        ]
       };
       const request: ISignTransaction = {
         transaction,
@@ -181,10 +181,12 @@ export default defineComponent({
             inputIndex: 0,
             address: data.address,
             sigtype: bsv.crypto.Signature.SIGHASH_ANYONECANPAY | bsv.crypto.Signature.SIGHASH_ALL | bsv.crypto.Signature.SIGHASH_FORKID
-          },
-        ],
+          }
+        ]
       };
       console.log(data, request);
+
+
       await wc
         .signTransaction(request)
         .then((result: ISignTransactionResult) => {
@@ -209,7 +211,7 @@ export default defineComponent({
                   new bsv.Transaction.Input({
                     prevTxId: input.prevTxId,
                     outputIndex: input.outputIndex,
-                    script: bsv.Script.fromHex(input.unlockingScript),
+                    script: bsv.Script.fromHex(input.unlockingScript)
                   }),
                   bsv.Script.fromHex(input.lockingScript),
                   input.satoshis
@@ -222,7 +224,7 @@ export default defineComponent({
             tx.addOutput(
               new bsv.Transaction.Output({
                 script,
-                satoshis: output.amount,
+                satoshis: output.amount
               })
             );
           }
@@ -234,13 +236,13 @@ export default defineComponent({
             Notify.create({
               color: 'negative',
               message: 'Please Open Wallet',
-              position: 'top',
+              position: 'top'
             });
           } else {
             Notify.create({
               color: 'negative',
               message: error.message,
-              position: 'top',
+              position: 'top'
             });
           }
         });
@@ -254,7 +256,7 @@ export default defineComponent({
           Notify.create({
             color: 'info',
             message: JSON.stringify(result),
-            position: 'top',
+            position: 'top'
           });
         })
         .catch((error) => {
@@ -262,13 +264,13 @@ export default defineComponent({
             Notify.create({
               color: 'negative',
               message: 'Please Open Wallet',
-              position: 'top',
+              position: 'top'
             });
           } else {
             Notify.create({
               color: 'negative',
               message: error.message,
-              position: 'top',
+              position: 'top'
             });
           }
         });
@@ -282,7 +284,7 @@ export default defineComponent({
           Notify.create({
             color: 'info',
             message: JSON.stringify(result),
-            position: 'top',
+            position: 'top'
           });
         })
         .catch((error) => {
@@ -290,13 +292,13 @@ export default defineComponent({
             Notify.create({
               color: 'negative',
               message: 'Please Open Wallet',
-              position: 'top',
+              position: 'top'
             });
           } else {
             Notify.create({
               color: 'negative',
               message: error.message,
-              position: 'top',
+              position: 'top'
             });
           }
         });
@@ -315,8 +317,8 @@ export default defineComponent({
       fetchTx,
       signTransaction,
       sendTransaction,
-      sendRawTransaction,
+      sendRawTransaction
     };
-  },
+  }
 });
 </script>

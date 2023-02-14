@@ -127,7 +127,7 @@ export default defineComponent({
       await wc.connect(DAPP);
     };
 
-    wc.wallet.value = route.query.wallet?.toString();
+    // wc.wallet.value = route.query.wallet?.toString();
 
     return {
       ...wc,

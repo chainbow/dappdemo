@@ -1,5 +1,5 @@
-import { IKeyValueStorage } from 'keyvaluestorage';
 import { SessionStorage } from 'quasar';
+import { IKeyValueStorage } from 'keyvaluestorage';
 
 export class SessionStorageWC implements IKeyValueStorage {
   public async getKeys(): Promise<string[]> {
