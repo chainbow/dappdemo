@@ -15,7 +15,7 @@
 
         <div v-if="account">
           {{ account.username }}({{
-            account.balances ? account.balances['Satoshi'].balance : ''
+            account.balances ? account.balances["Satoshi"].balance : ""
           }}Satoshi)
           <q-btn
             flat
@@ -26,6 +26,29 @@
         </div>
 
         <q-btn color="secondary" @click="connect" v-else>Connect Wallect</q-btn>
+
+
+
+        <q-btn  color="primary" :label="currentChainId">
+          <q-menu>
+            <q-list style="min-width: 100px">
+              <q-item clickable @click="setChain('bsv:livenet')" v-close-popup>
+                <q-item-section >BSV Livenet</q-item-section>
+              </q-item>
+              <q-item clickable @click="setChain('bsv:testnet')" v-close-popup>
+                <q-item-section>BSV Testnet</q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item clickable @click="setChain('rxd:livenet')" v-close-popup>
+                <q-item-section>RXD Livenet</q-item-section>
+              </q-item>
+              <q-item clickable @click="setChain('rxd:testnet')" v-close-popup>
+                <q-item-section>RXD Testnet</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
+
       </q-toolbar>
     </q-header>
 
@@ -72,12 +95,6 @@ const linksList = [
     link: 'SignMessage',
   },
   {
-    title: 'Send Token',
-    caption: 'chat.quasar.dev',
-    icon: 'chat',
-    link: 'SendToken',
-  },
-  {
     title: 'Sign Transaction',
     caption: 'Sign Transaction the broadcast',
     icon: 'record_voice_over',
@@ -100,7 +117,6 @@ const linksList = [
 import { defineComponent, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import useWallet from '../hooks/useWallet';
-import { DAPP } from '../hooks/utils';
 
 export default defineComponent({
   name: 'MainLayout',
@@ -124,13 +140,18 @@ export default defineComponent({
 
     const connect = async () => {
       console.log('connect');
-      await wc.connect(DAPP);
+      await wc.connect();
     };
+
+    const setChain =async (chainId:string) => {
+      wc.currentChainId.value = chainId
+    }
 
     // wc.wallet.value = route.query.wallet?.toString();
 
     return {
       ...wc,
+      setChain,
       essentialLinks: linksList,
       leftDrawerOpen,
       go,
