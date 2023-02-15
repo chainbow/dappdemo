@@ -92,7 +92,6 @@ export interface ISignTransaction {
 export const DEFAULT_RELAY_PROVIDER = 'wss://wc.cercle.sg';
 export const BSV_CHAINS = ['bsv:livenet', 'bsv:testnet'];
 export const RXD_CHAINS = [ 'rxd:livenet', 'rxd:testnet'];
-// export const CHAIN_ID = 'bsv:testnet';
 
 export const DEFAULT_LOGGER = 'debug';
 
