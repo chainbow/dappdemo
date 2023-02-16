@@ -1,12 +1,10 @@
 <template>
   <q-page class="row items-center justify-evenly">
-    <div v-if="account">
-      {{ account }}
+    <div v-if="accounts.length > 0">
+      {{ accounts[0] }}
     </div>
-    <div v-else>
-      Welcome using Wallet Connect v2 for BSV Wallet. <br />
-      <a href="http://chainbow.io">http://chainbow.io</a>
-      <q-btn @click="connect(DAPP)">Connect Wallet</q-btn>
+    <div class="flex column items-center" v-else>
+      <NotConnectTip />
     </div>
   </q-page>
 </template>
@@ -15,10 +13,13 @@
 import { defineComponent } from 'vue';
 import useWallet from '../hooks/useWallet';
 import { DAPP } from '../hooks/utils';
+import NotConnectTip from 'src/components/NotConnectTip.vue';
 
 export default defineComponent({
   name: 'PageIndex',
-  components: {},
+    components: {
+    NotConnectTip,
+  },
   setup() {
     const wc = useWallet();
 

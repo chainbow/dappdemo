@@ -9,17 +9,16 @@
 global.Buffer = global.Buffer || require('buffer').Buffer;
 global.process = global.process || require('process');
 
-import WalletConnectClient from '@walletconnect/client';
 import SignClient from '@walletconnect/sign-client';
-import { ClientOptions, SessionTypes } from '@walletconnect/types';
+import { SessionTypes } from '@walletconnect/types';
 import { getSdkError } from '@walletconnect/utils';
 import { Web3Modal } from '@web3modal/standalone';
 import SessionStorageWC from 'src/utils/SessionStorageWC';
-import { reactive, toRefs } from 'vue';
+import { onMounted, reactive, toRefs } from 'vue';
+import { useRoute } from 'vue-router';
 import {
   APPROVAL_METHODS,
   BSV_CHAINS,
-  IAccount,
   IAccountBalances,
   IAssetData,
   IMessageParameters,
@@ -32,28 +31,42 @@ import {
 } from './useWalletTypes';
 
 const Message = require('bsv/message');
-const TIMEOUT = 300000;
+
+/**
+ * Web3Modal Config
+ */
+const web3Modal = new Web3Modal({
+  walletConnectVersion: 2,
+  projectId: '1adba0cb85fb70e09109ade51290d777',
+  themeMode: 'light',
+});
 
 const allowMethods: string[] = Object.values(APPROVAL_METHODS).concat(
   Object.values(NON_APPROVAL_METHODS)
 );
 
 interface IAppState {
-  initialized: boolean;
+  isInitializing: boolean;
   wallet: string | undefined;
   client?: SignClient;
   session?: any;
-  account?: IAccount;
+  chains: any[];
+  accounts: { username: string, alias: string, domain: string, address: string }[];
+  pairings: any[];
+  balances: any[];
   currentChainId: string;
 }
 
 const INITIAL_STATE: IAppState = {
-  initialized: false,
+  isInitializing: false,
   currentChainId: BSV_CHAINS[0],
   wallet: undefined,
   client: undefined,
+  chains: [],
+  accounts: [],
+  pairings: [],
+  balances: [],
   session: undefined,
-  account: undefined,
 };
 
 const dataWC = reactive<IAppState>(INITIAL_STATE);
@@ -72,18 +85,16 @@ export interface Response {
   data?: any;
 }
 
-export default function useWallet(
-  appSchema = 'chainbow',
-  opts?: ClientOptions
-) {
+export default function useWallet() {
+  const route = useRoute();
+
   const disconnect = async () => {
     console.log('[disconnect]', dataWC.client);
     console.log('[disconnect]', dataWC.session);
     if (!dataWC.client) return false;
     const topic = dataWC.session.topic;
     await disconnectNoticeWallet(topic);
-    dataWC.session = undefined;
-    dataWC.account = undefined;
+    reset();
     await dataWC.client.disconnect({
       topic,
       reason: getSdkError('USER_DISCONNECTED'),
@@ -91,25 +102,25 @@ export default function useWallet(
     return true;
   };
 
-  const onConnected = async (session: SessionTypes.Settled) => {
-    dataWC.session = session;
-    //Only use the first account
-    const account = session.state.accounts[0];
-    const [namespace, network, data] = account.split(':');
-    const [alias, domain, address, signedMessage] = data.split('|');
-    const username = domain ? `${alias}@${domain}` : address;
-    const message = session.self.publicKey;
-    const result = Message.verify(message, address, signedMessage);
-    if (!result) {
-      await disconnect();
-      throw new Error('InvalidAccount');
-    }
-    dataWC.account = { username, alias, domain, address };
-    console.log(dataWC.account);
+  // const onConnected = async (session: SessionTypes.Settled) => {
+  //   dataWC.session = session;
+  //   //Only use the first account
+  //   const account = session.state.accounts[0];
+  //   const [namespace, network, data] = account.split(':');
+  //   const [alias, domain, address, signedMessage] = data.split('|');
+  //   const username = domain ? `${alias}@${domain}` : address;
+  //   const message = session.self.publicKey;
+  //   const result = Message.verify(message, address, signedMessage);
+  //   if (!result) {
+  //     await disconnect();
+  //     throw new Error('InvalidAccount');
+  //   }
+  //   dataWC.account = { username, alias, domain, address };
+  //   console.log(dataWC.account);
 
-    const balances = await getAccountBalance(session, username);
-    dataWC.account.balances = balances;
-  };
+  //   const balances = await getAccountBalances(session, username);
+  //   dataWC.account.balances = balances;
+  // };
 
   const disconnectNoticeWallet = async (topic: string) => {
     const request: Request = {
@@ -118,24 +129,12 @@ export default function useWallet(
     await sendBaseRequest(request);
   };
 
-  const assets2Balance = (assets: IAssetData[]) => {
-    const balances: IAccountBalances = {};
-    assets.forEach((asset: IAssetData) => {
-      const key = asset.contract ? asset.contract : asset.symbol;
-      balances[key] = asset;
-    });
-    return balances;
-  };
-
-  const getAccountBalance = async (
-    session?: SessionTypes.Settled | undefined,
-    username?: string
-  ) => {
+  const getBalance = async (accounts: string[]) => {
     const request: Request = {
-      body: { method: 'getBalance', params: { username } },
+      body: { method: 'getBalance', params: { accounts } },
     };
     const response = await sendBaseRequest(request);
-    return assets2Balance(response.data);
+    if (response.data) dataWC.balances = response.data
   };
 
   const signMessage = async (
@@ -173,13 +172,6 @@ export default function useWallet(
     return await sendBaseRequest(request);
   };
 
-  const getBalance = () => {
-    if (dataWC.account) {
-      const balances = dataWC.account.balances;
-      return balances;
-    }
-  };
-
   const getNewAddress = async (): Promise<string> => {
     const request: Request = {
       body: { method: 'getNewAddress' },
@@ -196,32 +188,15 @@ export default function useWallet(
     return JSON.parse(response.data);
   };
 
-  const finishConnectInitAccountInfo = async (
-    account: any,
-    message: string
+  const mapToAccountObj = (
+    allNamespaceAccounts: string[]
   ) => {
-    const [namespace, network, data] = account.split(':');
-    const [alias, domain, address, signedMessage] = data.split('|');
-    const username = domain ? `${alias}@${domain}` : address;
-    const result = Message.verify(message, address, signedMessage);
-    if (!result) {
-      await disconnect();
-      throw new Error('InvalidAccount');
-    }
-    dataWC.account = { username, alias, domain, address };
-    console.log(dataWC.account);
-    const balances = await getAccountBalance(undefined, username);
-    dataWC.account.balances = balances;
-  };
-
-  const subscribeToEvents = (client: WalletConnectClient) => { };
-
-  const checkPersistedState = async (client: WalletConnectClient) => {
-    console.log(dataWC);
-    if (client.session.topics.length > 0) {
-      const session = await client.session.get(client.session.topics[0]);
-      await onConnected(session);
-    }
+    return allNamespaceAccounts.map((account) => {
+      const [namespace, network, data] = account.split(':');
+      const [alias, domain, address, signedMessage] = data.split('|');
+      const username = domain ? `${alias}@${domain}` : address;
+      return { username, alias, domain, address };
+    })
   };
 
   const sendBaseRequest = async (request: Request): Promise<Response> => {
@@ -238,129 +213,163 @@ export default function useWallet(
     return { data: response };
   };
 
-  const connect = async () => {
-    if (!dataWC.client) return false;
+  const connect = async (pairing?: any) => {
+    if (typeof dataWC.client === 'undefined') {
+      throw new Error('WalletConnect is not initialized');
+    }
+    console.log('connect, pairing topic is:', pairing?.topic);
     try {
-      const web3Modal = new Web3Modal({
-        walletConnectVersion: 2,
-        projectId: '1adba0cb85fb70e09109ade51290d777',
-      });
+      const requiredNamespaces = {
+        bsv: {
+          chains: BSV_CHAINS,
+          methods: allowMethods,
+          events: ['chainChanged', 'accountsChanged'],
+        },
+        rxd: {
+          chains: RXD_CHAINS,
+          methods: allowMethods,
+          events: ['chainChanged', 'accountsChanged'],
+        },
+      };
 
       const { uri, approval } = await dataWC.client.connect({
-        requiredNamespaces: {
-          bsv: {
-            chains: BSV_CHAINS,
-            methods: allowMethods,
-            events: ['chainChanged', 'accountsChanged'],
-          },
-          rxd: {
-            chains: RXD_CHAINS,
-            methods: allowMethods,
-            events: ['chainChanged', 'accountsChanged'],
-          },
-        },
+        pairingTopic: pairing?.topic,
+        requiredNamespaces,
       });
-      await web3Modal.openModal({
-        uri,
-        standaloneChains: ['bsv'],
-        route: 'Account',
-      });
-      dataWC.session = await approval();
-      console.info('[session]', dataWC.session);
-      const unsubscribe = web3Modal.subscribeModal((newState) =>
-        console.info('[subscribeModal]', dataWC.session)
-      );
-      unsubscribe();
+
+      // Open QRCode modal if a URI was returned (i.e. we're not connecting an existing pairing).
+      if (uri) {
+        // Create a flat array of all requested chains across namespaces.
+        const standaloneChains = Object.values(requiredNamespaces)
+          .map((namespace) => namespace.chains)
+          .flat();
+
+        web3Modal.openModal({ uri, standaloneChains });
+      }
+
+      const session = await approval();
+      console.log('Established session:', session);
+      // @ts-ignore
+      await onSessionConnected(session);
+      // Update known pairings after session is connected.
+      dataWC.pairings = dataWC.client.pairing.getAll({ active: true });
+    } catch (e) {
+      console.error(e);
+      // ignore rejection
+    } finally {
+      // close modal in case it was open
       web3Modal.closeModal();
-
-      const pairings = dataWC.client.core.pairing.getPairings();
-      console.info('[pairings]', pairings);
-
-      await finishConnectInitAccountInfo(
-        dataWC.session.namespaces.bsv.accounts[0],
-        dataWC.session.self.publicKey
-      );
-
-      return true;
-    } catch (error: any) {
-      return false;
     }
   };
 
-  const init = async (opts?: ClientOptions) => {
-    if (dataWC.client) return { error: 'has been init' };
-    const signClient = await SignClient.init({
-      projectId: '1adba0cb85fb70e09109ade51290d777',
-      metadata: {
-        name: 'Example Dapp',
-        description: 'Example Dapp',
-        url: '#',
-        icons: ['https://walletconnect.com/walletconnect-logo.png'],
-      },
-      storage: SessionStorageWC,
-    });
-    dataWC.client = signClient;
-
-    signClient.on('session_delete', async (event) => {
-      dataWC.session = undefined;
-      dataWC.account = undefined;
-    });
-
-    signClient.core.pairing.events.on('pairing_delete', ({ id, topic }) => {
-      console.info('[pairing.events]', id, topic);
-    });
-
-    signClient.core.pairing.events.on('pairing_proposal', ({ id, topic }) => {
-      console.info('[proposal]', id, topic);
-    });
-
-    signClient.on('session_event', (event) => {
-      // Handle session events, such as "chainChanged", "accountsChanged", etc.
-      console.info('[session_event]', event);
-    });
-
-    signClient.on('session_update', ({ topic, params }) => {
-      console.info('[session_update]', topic, params);
-
-      // const { namespaces } = params;
-      // const _session = signClient.session.get(topic);
-      // // Overwrite the `namespaces` of the existing session with the incoming one.
-      // const updatedSession = { ..._session, namespaces };
-      // // Integrate the updated session state into your dapp state.
-      // onSessionUpdate(updatedSession);
-    });
-
-    // if (!dataWC.initialized) {
-    //   const route = useRoute();
-    //   const location = new URL(window.location.href);
-    //   const wallet =
-    //     location.searchParams.get('wallet') || route.query['wallet'];
-    //   dataWC.wallet = wallet ? wallet.toString() : undefined;
-    //
-    //   dataWC.initialized = true;
-    //
-    //   if (dataWC.client) {
-    //     //@ts-ignore
-    //     subscribeToEvents(dataWC.client);
-    //     //@ts-ignore
-    //     await checkPersistedState(dataWC.client);
-    //   }
-    // }
+  const reset = () => {
+    dataWC.session = undefined;
+    dataWC.accounts = [];
+    dataWC.balances = [];
+    dataWC.chains = [];
   };
 
-  void init(opts);
+  const onSessionConnected = async (_session: SessionTypes.Struct) => {
+    const allNamespaceAccounts = Object.values(_session.namespaces)
+      .map((namespace) => namespace.accounts)
+      .flat();
+    const allNamespaceChains = Object.keys(_session.namespaces);
+
+    dataWC.session = _session;
+    dataWC.chains = allNamespaceChains;
+    dataWC.accounts = mapToAccountObj(allNamespaceAccounts);
+    await getBalance(allNamespaceAccounts);
+  };
+
+  const _subscribeToEvents = async (_client: SignClient) => {
+    if (typeof _client === 'undefined') {
+      throw new Error('WalletConnect is not initialized');
+    }
+
+    _client.on('session_ping', (args) => {
+      console.log('EVENT', 'session_ping', args);
+    });
+
+    _client.on('session_event', (args) => {
+      console.log('EVENT', 'session_event', args);
+    });
+
+    _client.on('session_update', ({ topic, params }) => {
+      console.log('EVENT', 'session_update', { topic, params });
+      const { namespaces } = params;
+      const _session = _client.session.get(topic);
+      const updatedSession = { ..._session, namespaces };
+      // @ts-ignore
+      onSessionConnected(updatedSession);
+    });
+
+    _client.on('session_delete', () => {
+      console.log('EVENT', 'session_delete');
+      reset();
+    });
+  };
+
+  const _checkPersistedState = async (_client: SignClient) => {
+    if (typeof _client === 'undefined') {
+      throw new Error('WalletConnect is not initialized');
+    }
+    // populates existing pairings to state
+    dataWC.pairings = _client.pairing.getAll({ active: true });
+    console.log(
+      'RESTORED PAIRINGS: ',
+      _client.pairing.getAll({ active: true })
+    );
+
+    if (typeof dataWC.session !== 'undefined') return;
+    // populates (the last) existing session to state
+    if (_client.session.length) {
+      const lastKeyIndex = _client.session.keys.length - 1;
+      const _session = _client.session.get(_client.session.keys[lastKeyIndex]);
+      console.log('RESTORED SESSION:', _session);
+      // @ts-ignore
+      await onSessionConnected(_session);
+      return _session;
+    }
+  };
+
+  const createClient = async () => {
+    try {
+      dataWC.isInitializing = true;
+
+      const _client = await SignClient.init({
+        projectId: '1adba0cb85fb70e09109ade51290d777',
+        metadata: {
+          name: 'Example Dapp',
+          description: 'Example Dapp',
+          url: '#',
+          icons: ['https://walletconnect.com/walletconnect-logo.png'],
+        },
+      });
+
+      await _subscribeToEvents(_client);
+      await _checkPersistedState(_client);
+      dataWC.client = _client;
+    } catch (err) {
+      throw err;
+    } finally {
+      dataWC.isInitializing = false;
+    }
+  };
+
+  onMounted(() => {
+    if (!dataWC.client) createClient();
+  });
 
   return {
     ...toRefs(dataWC),
     connect,
     disconnect,
-    getBalance,
     signMessage,
     sendTransaction,
     signTransaction,
     sendRawTransaction,
     getNewAddress,
     verifyAddress,
-    getAccountBalance,
+    getBalance,
   };
 }

@@ -90,6 +90,8 @@ module.exports = {
     '@typescript-eslint/require-await': 'off',
     '@typescript-eslint/restrict-template-expressions': 'off',
     // allow debugger during development only
-    'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off'
+    'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
+    "@typescript-eslint/no-floating-promises": "off",
+    "@typescript-eslint/no-unsafe-return": "off"
   }
 };

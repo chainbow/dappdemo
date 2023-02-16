@@ -13,9 +13,9 @@
 
         <q-toolbar-title> Wallect Connect to BSV Wallet </q-toolbar-title>
 
-        <div v-if="account">
-          {{ account.username }}({{
-            account.balances ? account.balances["Satoshi"].balance : ""
+        <div v-if="accounts.length > 0">
+          {{ accounts[0].username}}({{
+            balances[0] ? balances[0].balance : ""
           }}Satoshi)
           <q-btn
             flat
@@ -26,8 +26,6 @@
         </div>
 
         <q-btn color="secondary" @click="connect" v-else>Connect Wallect</q-btn>
-
-
 
         <q-btn  color="primary" :label="currentChainId">
           <q-menu>
@@ -73,7 +71,6 @@
 
 <script lang="ts">
 import EssentialLink from 'components/EssentialLink.vue';
-import { useRoute } from 'vue-router';
 
 const linksList = [
   {
@@ -126,7 +123,6 @@ export default defineComponent({
   },
 
   setup() {
-    const route = useRoute();
     const wc = useWallet();
 
     const leftDrawerOpen = ref(false);

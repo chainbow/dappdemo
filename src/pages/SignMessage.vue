@@ -26,9 +26,7 @@
     </div>
 
     <div v-else>
-      Welcome using Wallet Connect v2 for BSV Wallet. <br />
-      <a href='http://chainbow.io'>http://chainbow.io</a>
-      <q-btn @click='connect(DAPP)'>Connect Wallet</q-btn>
+      <NotConnectTip />
     </div>
   </q-page>
 </template>
@@ -40,10 +38,13 @@ import useWallet from '../hooks/useWallet';
 import { DAPP } from '../hooks/utils';
 import Message from 'bsv/message';
 import { IMessageResult } from 'src/hooks/useWalletTypes';
+import NotConnectTip from 'src/components/NotConnectTip.vue';
 
 export default defineComponent({
   name: 'SignMessage',
-  components: {},
+   components: {
+    NotConnectTip,
+  },
   setup() {
     const wc = useWallet();
     const data = reactive({
@@ -53,10 +54,10 @@ export default defineComponent({
     });
 
     watch(
-      () => wc.account?.value?.address,
-      (address) => {
-        if (address) {
-          data.address = address;
+      () => wc.accounts?.value,
+      (accounts) => {
+        if (accounts.length>0) {
+          data.address = accounts[0].address;
         }
       }
     );
@@ -110,8 +111,8 @@ export default defineComponent({
     };
 
     onMounted(() => {
-      if (wc.account?.value?.address) {
-        data.address = wc.account.value.address;
+      if (wc.accounts.value[0]) {
+        data.address = wc.accounts.value[0].address
       }
     });
 

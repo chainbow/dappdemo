@@ -94,16 +94,13 @@
     </div>
 
     <div v-else>
-      Welcome using Wallet Connect v2 for BSV Wallet. <br />
-      <a href='http://chainbow.io'>http://chainbow.io</a>
-      <q-btn @click='connect(DAPP)'>Connect Wallet</q-btn>
+      <NotConnectTip />
     </div>
   </q-page>
 </template>
 
 <script lang='ts'>
 import { Notify } from 'quasar';
-
 import { defineComponent, reactive, toRefs, watch, onMounted } from 'vue';
 import useWallet from '../hooks/useWallet';
 import { DAPP } from '../hooks/utils';
@@ -114,9 +111,13 @@ import {
 } from 'src/hooks/useWalletTypes';
 import { api } from 'src/boot/axios';
 import bsv from 'bsv';
+import NotConnectTip from 'src/components/NotConnectTip.vue';
 
 export default defineComponent({
   name: 'SignTransaction',
+  components: {
+    NotConnectTip,
+  },
   setup() {
     const wc = useWallet();
     const data = reactive({
@@ -133,10 +134,10 @@ export default defineComponent({
     });
 
     watch(
-      () => wc.account?.value?.address,
-      (address) => {
-        if (address) {
-          data.toAddress = address;
+      () => wc.accounts?.value,
+      (accounts) => {
+        if (accounts.length > 0) {
+          data.toAddress = accounts[0].address;
         }
       }
     );
@@ -305,8 +306,8 @@ export default defineComponent({
     };
 
     onMounted(() => {
-      if (wc.account?.value?.address) {
-        data.address = wc.account.value.address;
+      if (wc.accounts.value[0]) {
+        data.address = wc.accounts.value[0].address;
       }
     });
 

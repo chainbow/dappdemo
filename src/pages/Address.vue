@@ -106,8 +106,8 @@ export default defineComponent({
     };
 
     onMounted(() => {
-      if (wc.account?.value?.address) {
-        data.address = wc.account.value.address;
+      if (wc.accounts.value[0]) {
+        data.address = wc.accounts.value[0].address
       }
     });
 

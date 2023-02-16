@@ -1,15 +1,13 @@
 <template>
   <q-page class="row items-center justify-evenly">
-    <div v-if="account">
+    <div v-if="accounts.length > 0">
       <q-input type="text" v-model="toAddress" label="To:"></q-input>
       <q-select v-model="format" :options="options" label="Format" />
       <q-input type="number" v-model="amount" label="Amount:"></q-input>
       <q-btn @click="send" label="Send"></q-btn>
     </div>
     <div v-else>
-      Welcome using Wallet Connect v2 for BSV Wallet. <br />
-      <a href="http://chainbow.io">http://chainbow.io</a>
-      <q-btn @click="connect(DAPP)">Connect Wallet</q-btn>
+      <NotConnectTip />
     </div>
   </q-page>
 </template>
@@ -19,10 +17,13 @@ import { defineComponent, reactive, toRefs } from 'vue';
 import useWallet from '../hooks/useWallet';
 import { DAPP } from '../hooks/utils';
 import { Notify } from 'quasar';
+import NotConnectTip from 'src/components/NotConnectTip.vue';
 
 export default defineComponent({
   name: 'SendTransaction',
-  components: {},
+   components: {
+    NotConnectTip,
+  },
   setup() {
     const wc = useWallet();
     const data = reactive({
