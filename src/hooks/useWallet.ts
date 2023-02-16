@@ -14,6 +14,7 @@ import SignClient from '@walletconnect/sign-client';
 import { ClientOptions, SessionTypes } from '@walletconnect/types';
 import { getSdkError } from '@walletconnect/utils';
 import { Web3Modal } from '@web3modal/standalone';
+import SessionStorageWC from 'src/utils/SessionStorageWC';
 import { reactive, toRefs } from 'vue';
 import {
   APPROVAL_METHODS,
@@ -165,9 +166,9 @@ export default function useWallet(
     return response.data;
   };
 
-  const sendRawTransaction = async (txHexArray: string[]) => {
+  const sendRawTransaction = async (txHexes: string[]) => {
     const request: Request = {
-      body: { method: 'sendRawTransaction', params: txHexArray },
+      body: { method: 'sendRawTransaction', params: { txHexes } },
     };
     return await sendBaseRequest(request);
   };
@@ -213,7 +214,7 @@ export default function useWallet(
     dataWC.account.balances = balances;
   };
 
-  const subscribeToEvents = (client: WalletConnectClient) => {};
+  const subscribeToEvents = (client: WalletConnectClient) => { };
 
   const checkPersistedState = async (client: WalletConnectClient) => {
     console.log(dataWC);
@@ -296,6 +297,7 @@ export default function useWallet(
         url: '#',
         icons: ['https://walletconnect.com/walletconnect-logo.png'],
       },
+      storage: SessionStorageWC,
     });
     dataWC.client = signClient;
 
