@@ -89,21 +89,3 @@ export interface ISignTransaction {
 }
 
 
-export const DEFAULT_RELAY_PROVIDER = 'wss://wc.cercle.sg';
-export const BSV_CHAINS = ['bsv:livenet', 'bsv:testnet'];
-export const RXD_CHAINS = [ 'rxd:livenet', 'rxd:testnet'];
-
-export const DEFAULT_LOGGER = 'debug';
-
-export const APPROVAL_METHODS = {
-  sendTransaction: 'sendTransaction',
-  signTransaction: 'signTransaction',
-  sendRawTransaction: 'sendRawTransaction',
-  signMessage: 'signMessage',
-};
-
-export const NON_APPROVAL_METHODS = {
-  getBalance: 'getBalance',
-  getNewAddress: 'getNewAddress',
-  verifyAddress: 'verifyAddress',
-};

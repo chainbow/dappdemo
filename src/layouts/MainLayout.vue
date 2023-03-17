@@ -11,7 +11,7 @@
           @click="toggleLeftDrawer"
         />
 
-        <q-toolbar-title> Wallect Connect to BSV Wallet </q-toolbar-title>
+        <q-toolbar-title>DApp Demo </q-toolbar-title>
 
         <div v-if="accounts.length > 0">
           {{ accounts[0].username}}({{

@@ -1,6 +1,6 @@
 <template>
     <div class="flex column items-center">
-      Welcome using Wallet Connect v2 for BSV Wallet. <br />
+      Welcome using Wallet Connect v2 for ChainBow Wallet. <br />
       <a href="http://chainbow.io">http://chainbow.io</a>
       <q-btn @click="connect(DAPP)">Connect Wallet</q-btn>
     </div>

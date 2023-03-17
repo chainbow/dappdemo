@@ -1,6 +1,6 @@
 <template>
   <q-page class='row items-center justify-evenly'>
-    <div v-if='account'>
+    <div v-if='accounts.length > 0'>
       <div class='column justify-around'>
         <div class='row justify-between q-pa-md'>
           <q-input
@@ -27,7 +27,7 @@
     </div>
 
     <div v-else>
-      Welcome using Wallet Connect v2 for BSV Wallet. <br />
+      Welcome using Wallet Connect v2 for ChainBow Wallet. <br />
       <a href='http://chainbow.io'>http://chainbow.io</a>
       <q-btn @click='connect(DAPP)'>Connect Wallet</q-btn>
     </div>

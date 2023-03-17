@@ -17,8 +17,6 @@ import SessionStorageWC from 'src/utils/SessionStorageWC';
 import { onMounted, reactive, toRefs } from 'vue';
 import { useRoute } from 'vue-router';
 import {
-  APPROVAL_METHODS,
-  BSV_CHAINS,
   IAccountBalances,
   IAssetData,
   IMessageParameters,
@@ -26,19 +24,50 @@ import {
   ISignTransaction,
   ISignTransactionResult,
   ITransaction,
-  NON_APPROVAL_METHODS,
-  RXD_CHAINS,
 } from './useWalletTypes';
 
 const Message = require('bsv/message');
 
+export const BSV_CHAINS = ['bsv:livenet', 'bsv:testnet'];
+export const RXD_CHAINS = [ 'rxd:livenet', 'rxd:testnet'];
+
+export const DEFAULT_LOGGER = 'debug';
+
+export const APPROVAL_METHODS = {
+  sendTransaction: 'sendTransaction',
+  signTransaction: 'signTransaction',
+  sendRawTransaction: 'sendRawTransaction',
+  signMessage: 'signMessage',
+};
+
+export const NON_APPROVAL_METHODS = {
+  getBalance: 'getBalance',
+  getNewAddress: 'getNewAddress',
+  verifyAddress: 'verifyAddress',
+};
+
+
+const ChainBowWallet = {
+  id: 'chainbow',
+  name: 'ChainBow Wallet',
+  links: {
+      universal: 'https://chainbow.io/',
+      native: 'chainbow://'
+  }
+}
 /**
  * Web3Modal Config
  */
 const web3Modal = new Web3Modal({
   walletConnectVersion: 2,
-  projectId: '1adba0cb85fb70e09109ade51290d777',
+  projectId: 'dcc082395a803b97ed77800c84613382',
   themeMode: 'light',
+  desktopWallets: [ChainBowWallet],
+  mobileWallets:[ChainBowWallet],
+  standaloneChains: [
+    'bsv:livenet', 'bsv:testnet',
+    'rxd:livenet', 'rxd:testnet'
+  ]
 });
 
 const allowMethods: string[] = Object.values(APPROVAL_METHODS).concat(

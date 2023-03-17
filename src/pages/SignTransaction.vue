@@ -1,6 +1,6 @@
 <template>
   <q-page class='row items-center justify-evenly'>
-    <div v-if='account'>
+    <div v-if='accounts.length > 0'>
       <div class='column justify-around'>
         <div class='row justify-between q-pa-md'>
           <q-input

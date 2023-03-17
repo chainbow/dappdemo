@@ -1,6 +1,6 @@
 <template>
   <q-page class="row items-center justify-evenly">
-    <div class="column items-center" v-if="account">
+    <div class="column items-center" v-if='accounts.length > 0'>
       <div v-if="error">{{ error }}</div>
       <q-input
         type="textarea"

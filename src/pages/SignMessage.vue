@@ -1,6 +1,6 @@
 <template>
   <q-page class='row items-center justify-evenly'>
-    <div v-if='account'>
+    <div v-if='accounts.length > 0'>
       <div class='column justify-around'>
         <div class='q-pa-sm' style='width: 500px'>
           <q-input v-model='message' type='textarea' filled label='Message:' />
