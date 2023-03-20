@@ -371,7 +371,7 @@ export default function useWallet() {
           name: 'Example Dapp',
           description: 'Example Dapp',
           url: '#',
-          icons: ['https://walletconnect.com/walletconnect-logo.png'],
+          icons: ['https://chainbow.io/chainbow-logo.svg'],
         },
       });
 

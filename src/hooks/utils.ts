@@ -10,7 +10,7 @@ export const DAPP: any = {
   name: 'Example Dapp',
   description: 'Example Dapp',
   url: 'https://testwc.mydapp.io',
-  icons: ['https://chainbow.io/logo.svg'],
+  icons: ['https://chainbow.io/chainbow-logo.svg'],
 };
 
 export function inIframe() {
