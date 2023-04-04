@@ -232,13 +232,13 @@ export default function useWallet() {
     if (!dataWC.session || !dataWC.client) return { error: 'init error' };
     const { method, params } = request.body;
     const topic = dataWC.session.topic;
-    console.info('rpc 参数', method, params, topic);
+    console.info('rpc', method, params, topic);
     const response = await dataWC.client.request({
       topic,
       chainId: dataWC.currentChainId,
       request: { method, params },
     });
-    console.info(`${method} 发送请求，返回值为`, response);
+    console.info(`${method} response:`, response);
     return { data: response };
   };
 
