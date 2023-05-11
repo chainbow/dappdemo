@@ -28,8 +28,12 @@ import {
 
 const Message = require('bsv/message');
 
-export const BSV_CHAINS = ['bsv:livenet', 'bsv:testnet'];
+export const BSV_CHAINS = [ 'bsv:livenet', 'bsv:testnet'];
 export const RXD_CHAINS = [ 'rxd:livenet', 'rxd:testnet'];
+
+//
+export const DEVELOPMENT_CHAINS = [ 'bsv:testnet', 'rxd:testnet'];
+
 
 export const DEFAULT_LOGGER = 'debug';
 
@@ -163,7 +167,10 @@ export default function useWallet() {
       body: { method: 'getBalance', params: { accounts } },
     };
     const response = await sendBaseRequest(request);
-    if (response.data) dataWC.balances = response.data
+    if (response.data) {
+      dataWC.balances = response.data
+      return response.data
+    }
   };
 
   const signMessage = async (
@@ -299,6 +306,7 @@ export default function useWallet() {
   };
 
   const onSessionConnected = async (_session: SessionTypes.Struct) => {
+    console.log(_session.namespaces)
     const allNamespaceAccounts = Object.values(_session.namespaces)
       .map((namespace) => namespace.accounts)
       .flat();

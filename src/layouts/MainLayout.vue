@@ -15,7 +15,7 @@
 
         <div v-if="accounts.length > 0">
           {{ accounts[0].username}}({{
-            balances[0] ? balances[0].balance : ""
+            balances[0] ? balances[0].balance.total : ""
           }}Satoshi)
           <q-btn
             flat
@@ -142,8 +142,6 @@ export default defineComponent({
     const setChain =async (chainId:string) => {
       wc.currentChainId.value = chainId
     }
-
-    // wc.wallet.value = route.query.wallet?.toString();
 
     return {
       ...wc,
